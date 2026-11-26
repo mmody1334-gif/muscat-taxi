@@ -18,6 +18,7 @@ html,body{margin:0;height:100%;background:#0e1a24;font-family:system-ui,sans-ser
 <button id="go" type="button">Start driving</button>
 <p style="font-size:12px;opacity:.7">W A S D or arrow keys, Space to brake, R to get towed back. On phones use the on-screen buttons.</p></div>
 <div id="at">Map data © OpenStreetMap contributors (ODbL)</div>
+<script>(function(){var f=window.fetch;window.fetch=function(u,o){return f(u==='data.gz'?'3-data.gz':u,o);};})();</script>
 <script src="game.js"></script>
 <script>
 document.getElementById('go').onclick=function(){
