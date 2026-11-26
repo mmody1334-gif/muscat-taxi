@@ -91,11 +91,11 @@ async function startGame(root, setStatus) {
      <div style="width:120px;height:10px;background:#0006;border-radius:5px;overflow:hidden"><div id="tx-fuel" style="height:100%;width:100%;background:#4ade80"></div></div>
      <div style="font-size:11px;opacity:.9">FUEL</div>
    </div>
-   <div id="tx-msg" style="position:absolute;left:0;right:0;top:12px;text-align:center;font-size:15px;padding:0 140px"></div>
+   <div id="tx-msg" style="position:absolute;left:0;right:0;top:12px;text-align:center;font-size:15px;padding:0 130px"></div>
    <div id="tx-spd" style="position:absolute;right:12px;bottom:12px;font-size:28px;text-align:right">0<span style="font-size:12px"> km/h</span></div>
    <div id="tx-place" style="position:absolute;left:10px;bottom:10px;font-size:12px;opacity:.9"></div>
-   <div id="tx-arrow" style="position:absolute;left:50%;top:58px;margin-left:-18px;width:36px;height:36px;font-size:30px;text-align:center;line-height:36px;transition:none">▲</div>
-   <div id="tx-dist" style="position:absolute;left:50%;top:94px;transform:translateX(-50%);font-size:12px"></div>`;
+   <div id="tx-arrow" style="position:absolute;left:50%;top:76px;margin-left:-18px;width:36px;height:36px;font-size:30px;text-align:center;line-height:36px;transition:none">▲</div>
+   <div id="tx-dist" style="position:absolute;left:50%;top:112px;transform:translateX(-50%);font-size:12px"></div>`;
   root.appendChild(hud);
   const mini = document.createElement('canvas'); mini.width = 150; mini.height = 150;
   mini.style.cssText = 'position:absolute;right:10px;top:10px;width:110px;height:110px;border-radius:50%;border:2px solid #fff9;background:#0007';
@@ -121,11 +121,11 @@ async function startGame(root, setStatus) {
   const gl = cv.getContext('webgl2', { antialias: true });
   if (!gl) { setStatus('This browser has no WebGL2.'); return; }
   const vs = `#version 300 es
-  in vec3 p; in vec3 n; in vec3 c; uniform mat4 vp; uniform vec3 cam; uniform mat4 mdl; out vec3 vc; out float fg;
-  void main(){ vec3 L=normalize(vec3(.4,.9,.3)); float d=abs(dot(n,L))*.5+.55; vc=c*d; vec4 wp=mdl*vec4(p,1.); gl_Position=vp*wp; fg=length(wp.xyz-cam); }`;
+  in vec3 p; in vec3 n; in vec3 c; uniform mat4 vp; uniform vec3 cam; uniform mat4 mdl; out vec3 vc; out vec3 wq;
+  void main(){ vec3 L=normalize(vec3(.4,.9,.3)); float d=abs(dot(n,L))*.5+.55; vc=c*d; vec4 wp=mdl*vec4(p,1.); gl_Position=vp*wp; wq=wp.xyz; }`;
   const fs = `#version 300 es
-  precision mediump float; in vec3 vc; in float fg; uniform vec3 sky; out vec4 o;
-  void main(){ float f=clamp((fg-350.)/950.,0.,1.); o=vec4(mix(vc,sky,f),1.); }`;
+  precision highp float; in vec3 vc; in vec3 wq; uniform vec3 sky; uniform vec3 cam; out vec4 o;
+  void main(){ float fg=length(wq-cam); float f=clamp((fg-350.)/950.,0.,1.); o=vec4(mix(vc,sky,f),1.); }`;
   const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
   const aP = gl.getAttribLocation(prog,'p'), aN = gl.getAttribLocation(prog,'n'), aC = gl.getAttribLocation(prog,'c');
@@ -142,17 +142,9 @@ async function startGame(root, setStatus) {
   // tile building
   function buildTile(t) {
     const mb = new MB(); const ox = t.tx*T, oz = t.tz*T;
-    // sea ribbons
-    for (const cs of t.c) {
-      for (let i = 0; i+3 < cs.length; i += 2) {
-        const x0 = ox+cs[i]/10, z0 = oz+cs[i+1]/10, x1 = ox+cs[i+2]/10, z1 = oz+cs[i+3]/10;
-        const dx = x1-x0, dz = z1-z0, l = Math.hypot(dx,dz)||1; // sea on the right in lat/lon => in x,z (z south) it is (-dz?) test: right of dir in xy = (dy,-dx); y=-z => (dz_xy..)
-        const nx = -dz/l, nz = dx/l; // sea side normal in (x,z)
-        const W = 1200;
-        const A=[x0,0.02,z0],B=[x1,0.02,z1],C=[x1+nx*W,0.02,z1+nz*W],Dd=[x0+nx*W,0.02,z0+nz*W];
-        mb.quad(A,Dd,C,B,[0,1,0],SEA); mb.quad(A,B,C,Dd,[0,1,0],SEA);
-      }
-    }
+    // sea cells (50 m raster runs: row, col0, col1)
+    for (const c of t.c) { const z0 = oz + c[0]*50, x0 = ox + c[1]*50, x1 = ox + (c[2]+1)*50, z1 = z0 + 50;
+      mb.quad([x0,0.02,z0],[x0,0.02,z1],[x1,0.02,z1],[x1,0.02,z0],[0,1,0],SEA); }
     // mountains
     for (let i = 0; i < t.m.length; i++) { const m = t.m[i]; const x=ox+m[0]/10, z=oz+m[1]/10, r=m[2], h=m[3];
       const col = [0.58+rnd(i)*0.1, 0.46+rnd(i+3)*0.08, 0.38+rnd(i+5)*0.06]; mb.cyl(x,0,z,r,h,col,7,r*0.12); }
@@ -189,6 +181,12 @@ async function startGame(root, setStatus) {
         const A=[q0[0],0,q0[1]],B=[q1[0],0,q1[1]],C=[q1[0],h,q1[1]],Dd=[q0[0],h,q0[1]];
         const nn = mb.norm(A,B,C); const f = 0.78+0.22*Math.abs(nn[0]);
         mb.quad(A,B,C,Dd,nn,shade(col,f)); mb.quad(A,Dd,C,B,[-nn[0],-nn[1],-nn[2]],shade(col,f));
+        const el = Math.hypot(q1[0]-q0[0], q1[1]-q0[1]);
+        if (h > 5 && el > 5) { const ux = (q1[0]-q0[0])/el, uz = (q1[1]-q0[1])/el, ox2 = nn[0]*0.06, oz2 = nn[2]*0.06, wc = [0.22,0.3,0.38];
+          const floors = Math.min(14, Math.floor((h-1)/3.2));
+          for (let fl = 0; fl < floors; fl++) { const y0 = 1.3 + fl*3.2, y1 = y0 + 1.3;
+            const a0=[q0[0]+ux*1.2+ox2,y0,q0[1]+uz*1.2+oz2], b0=[q1[0]-ux*1.2+ox2,y0,q1[1]-uz*1.2+oz2], c0=[b0[0],y1,b0[2]], d0=[a0[0],y1,a0[2]];
+            mb.quad(a0,b0,c0,d0,nn,wc); const a1=[a0[0]-2*ox2,y0,a0[2]-2*oz2], b1=[b0[0]-2*ox2,y0,b0[2]-2*oz2]; mb.quad(a1,[a1[0],y1,a1[2]],[b1[0],y1,b1[2]],b1,[-nn[0],-nn[1],-nn[2]],wc); } }
       }
       const idx = earcut(P);
       for (let i = 0; i < idx.length; i += 3) { const a=P[idx[i]],b=P[idx[i+1]],c=P[idx[i+2]];
@@ -250,6 +248,7 @@ async function startGame(root, setStatus) {
   // heading along road
   { let bd=1e9; for (const t of D.t) for (const r of t[2]) { const p=r[3]; for (let i=0;i+3<p.length;i+=2){ const x=t[0]*T+p[i]/10,z=t[1]*T+p[i+1]/10; const d=Math.hypot(x-car.x,z-car.z); if(d<bd){bd=d;car.h=Math.atan2(t[0]*T+p[i+2]/10-x,t[1]*T+p[i+3]/10-z);} } } }
   const fuels = pois.filter(p => p[2] === 'f');
+  window.__taxi = { car, get mission() { return mission; } };
   let mission = { state: 'wait', pick: null, drop: null, timer: 0, dist: 0, fare: 0 };
   let toast = '', toastT = 0;
   const say = (s, t=3) => { toast = s; toastT = t; };
@@ -309,8 +308,8 @@ async function startGame(root, setStatus) {
     if (cv.width !== (w*dpr|0) || cv.height !== (h*dpr|0)) { cv.width = w*dpr; cv.height = h*dpr; }
     gl.viewport(0,0,cv.width,cv.height); gl.clearColor(SKY[0],SKY[1],SKY[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     const k = 1 - Math.pow(0.001, dt); camH += Math.atan2(Math.sin(car.h-camH), Math.cos(car.h-camH))*Math.min(1, dt*4); camX += (car.x-camX)*k; camZ += (car.z-camZ)*k;
-    const back = 9 + kmh()*0.04, e = [car.x - Math.sin(camH)*back, 4.3 + kmh()*0.012, car.z - Math.cos(camH)*back], c = [car.x + Math.sin(camH)*6, 1.4, car.z + Math.cos(camH)*6];
-    const vp = mul(persp(1.0, cv.width/cv.height, 0.5, 1600), look(e, c));
+    const back = (cv.width < cv.height ? 14 : 9) + kmh()*0.04, e = [car.x - Math.sin(camH)*back, 4.3 + kmh()*0.012, car.z - Math.cos(camH)*back], c = [car.x + Math.sin(camH)*6, 1.4, car.z + Math.cos(camH)*6];
+    const vp = mul(persp(cv.width < cv.height ? 1.25 : 1.0, cv.width/cv.height, 0.5, 1600), look(e, c));
     const I4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]); gl.uniformMatrix4fv(uVP, false, new Float32Array(vp)); gl.uniformMatrix4fv(uMdl, false, I4); gl.uniform3fv(uCam, e); gl.uniform3fv(uSky, SKY);
     // ground
     const g = new MB(); const gx = Math.round(car.x/50)*50, gz = Math.round(car.z/50)*50, G = 1800;
