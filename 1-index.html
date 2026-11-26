@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Muscat Taxi</title>
+<style>
+html,body{margin:0;height:100%;background:#0e1a24;font-family:system-ui,sans-serif;overflow:hidden}
+#g{position:fixed;inset:0}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:14px;text-align:center;padding:20px;background:linear-gradient(#1b3a52,#0e1a24)}
+#ov h1{font-size:40px;margin:0}
+#ov p{opacity:.85;max-width:440px;margin:0}
+#go{padding:14px 40px;font-size:18px;font-weight:700;border-radius:30px;border:0;background:#facc15;color:#222}
+#st{position:fixed;left:0;right:0;top:45%;text-align:center;color:#fff;font-weight:700;pointer-events:none}
+#at{position:fixed;left:6px;bottom:2px;font-size:10px;color:#fff;opacity:.6;pointer-events:none}
+</style></head><body>
+<div id="g"></div><div id="st"></div>
+<div id="ov"><h1>Muscat Taxi</h1>
+<p>Drive a taxi through Muscat, built from real map data. Pick up passengers at the green beam, drop them at the blue beam, and watch your fuel.</p>
+<button id="go" type="button">Start driving</button>
+<p style="font-size:12px;opacity:.7">W A S D or arrow keys, Space to brake, R to get towed back. On phones use the on-screen buttons.</p></div>
+<div id="at">Map data © OpenStreetMap contributors (ODbL)</div>
+<script src="game.js"></script>
+<script>
+document.getElementById('go').onclick=function(){
+  document.getElementById('ov').style.display='none';
+  var st=document.getElementById('st');
+  startGame(document.getElementById('g'),function(m){st.textContent=m;}).catch(function(e){st.textContent='Error: '+(e&&e.message||e);});
+};
+</script></body></html>
